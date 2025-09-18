@@ -6,8 +6,9 @@ import './Dashboard.css';
 
 const PowerTheftDashboard = () => {
   
-  const [sourceCurrent, setSourceCurrent] = useState(12.5);
-  const [loadCurrent, setLoadCurrent] = useState(11.8);
+  // realistic small-range readings (Amps) per hardware
+  const [sourceCurrent, setSourceCurrent] = useState(0.15);
+  const [loadCurrent, setLoadCurrent] = useState(0.14);
   const [theftDetected, setTheftDetected] = useState(false);
   const [isOnline] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -92,17 +93,33 @@ const PowerTheftDashboard = () => {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      const newSource = 10 + Math.random() * 6;
-      const theftChance = Math.random();
-      const newLoad = theftChance > 0.85 ? newSource - (2 + Math.random() * 3) : newSource - (0.1 + Math.random() * 0.6);
+      // Normal source between 0.100 and 0.300 A
+      const newSource = 0.100 + Math.random() * 0.200;
+      // Small normal measurement loss
+      const normalLoss = 0.005 + Math.random() * 0.02;
 
-      setSourceCurrent(Number(newSource.toFixed(2)));
-      setLoadCurrent(Number(Math.max(0, newLoad).toFixed(2)));
-      setTheftDetected(newSource - newLoad > 1.5);
+      const theftChance = Math.random();
+      // Simulate theft: occasional event where load spikes to ~0.600 A
+      let newLoad;
+      if (theftChance > 0.93) {
+        // load spike (hike) to indicate tampering/theft
+        newLoad = 0.58 + Math.random() * 0.05; // ~0.58 - 0.63
+      } else {
+        // normal: load close to source minus small loss
+        newLoad = Math.max(0.0, newSource - normalLoss);
+      }
+
+      const roundedSource = Number(newSource.toFixed(3));
+      const roundedLoad = Number(newLoad.toFixed(3));
+
+      setSourceCurrent(roundedSource);
+      setLoadCurrent(roundedLoad);
+      // Detect theft when load jumps to ~0.6 AND the difference (load - source) is significant
+      setTheftDetected(newLoad >= 0.6 || (newLoad - newSource) >= 0.25);
       setCurrentTime(new Date());
 
       setHistoricalData(prev => {
-        const newData = [...prev, { time: new Date().toLocaleTimeString(), source: newSource, load: Math.max(0, newLoad) }];
+        const newData = [...prev, { time: new Date().toLocaleTimeString(), source: roundedSource, load: Math.max(0, roundedLoad) }];
         return newData.slice(-24);
       });
     }, 3000);

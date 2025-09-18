@@ -8,10 +8,22 @@ import './Reports.css';
 // small helper to format date
 const fmt = (d) => new Date(d).toLocaleString();
 
+
 const generateRow = (base = new Date()) => {
-	const source = +(8 + Math.random() * 10).toFixed(2);
-	const load = +(Math.max(0, source - (Math.random() * 3))).toFixed(2);
-	const theft = source - load > 1.5;
+	// source between 0.100 - 0.300 A
+	const sourceVal = 0.100 + Math.random() * 0.200;
+	const normalLoss = 0.005 + Math.random() * 0.02;
+	const theftChance = Math.random();
+	let loadVal;
+	if (theftChance > 0.93) {
+		// theft spike
+		loadVal = 0.58 + Math.random() * 0.05; // ~0.58-0.63
+	} else {
+		loadVal = Math.max(0, sourceVal - normalLoss);
+	}
+	const source = Number(sourceVal.toFixed(3));
+	const load = Number(loadVal.toFixed(3));
+	const theft = (load >= 0.6) || (load - source) >= 0.25;
 	const severity = theft ? (Math.random() > 0.6 ? 'High' : 'Medium') : 'Safe';
 	return {
 		id: `${base.getTime()}-${Math.floor(Math.random() * 1000)}`,
@@ -163,8 +175,8 @@ export default function Reports() {
 	const totalThefts = useMemo(()=> rows.filter(r=>r.theft).length, [rows]);
 	const totalEnergy = useMemo(()=> rows.reduce((s,r)=>s + ((r.source+r.load)/2)*0.25, 0), [rows]); // mock kWh
 	const avgDailyLoad = useMemo(()=>{
-		if(!rows.length) return 0;
-		return (rows.reduce((s,r)=>s + r.load,0) / rows.length).toFixed(2);
+	    if(!rows.length) return 0;
+	    return Number((rows.reduce((s,r)=>s + r.load,0) / rows.length).toFixed(3));
 	},[rows]);
 
 	const theftLast30 = useMemo(()=>{
@@ -178,7 +190,7 @@ export default function Reports() {
 		return {labels, vals};
 	},[rows]);
 
-	const linePoints = useMemo(()=> rows.slice(0,24).map(r=>r.source), [rows]);
+	const linePoints = useMemo(()=> rows.slice(0,24).map(r=>Number(r.source)), [rows]);
 	const pieVals = useMemo(()=> [rows.filter(r=>r.theft).length, rows.filter(r=>!r.theft).length], [rows]);
 
 	const displayThefts = useAnimatedNumber(totalThefts, 900);
@@ -308,8 +320,8 @@ export default function Reports() {
 								<tr key={r.id} className={i%2===0? 'striped':' '}>
 									<td className="px-3 py-2">{fmt(r.time)}</td>
 									<td className="px-3 py-2">{r.device}</td>
-									<td className="px-3 py-2">{r.source}</td>
-									<td className="px-3 py-2">{r.load}</td>
+									<td className="px-3 py-2">{Number(r.source).toFixed(3)}</td>
+									<td className="px-3 py-2">{Number(r.load).toFixed(3)}</td>
 									<td className="px-3 py-2"><span className={`pfd-alert-badge ${r.theft? 'neon-red':'neon-green'}`}>{r.theft? 'THEFT':'SAFE'}</span></td>
 									<td className="px-3 py-2"><span className={`pfd-alert-badge`}>{r.severity}</span></td>
 								</tr>
